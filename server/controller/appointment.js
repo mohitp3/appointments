@@ -7,10 +7,10 @@ exports.create = async (req, res) => {
     res.status(400).send({ message: "Content can not be emtpy!" });
     return;
   }
-  var numSlots = Math.ceil(req.body.duration/30);
+  var numSlots = Math.ceil(req.body.duration / 30);
   reqSlot = [];
-  for(i=0;i<numSlots;i++){
-    reqSlot.push(req.body.slot + i)
+  for (i = 0; i < numSlots; i++) {
+    reqSlot.push(req.body.slot + i);
   }
   const appointment = new Appointment({
     email: req.body.email,
@@ -24,19 +24,24 @@ exports.create = async (req, res) => {
   try {
     //check slot
     let slotexist = await slots.getSlots(fetchParam);
-    console.log(slotexist)
-    console.log(reqSlot)
-    reqSlot.forEach(element => { 
-        if (!slotexist.includes(element)) {
-        return res.status(442).send({ message: "Slot Not Available" });
-        }
-    });
-    
+    for (let i = 0; i < reqSlot.length; i++) {
+      if (!slotexist.includes(reqSlot[i])) {
+        reqSlot = [];
+        break;
+      }
+    }
     //add slot
-    let addslots = await slots.addSlot({
-      slot: req.body.slot,
-      date: req.body.appointmentDate,
-    });
+    if (reqSlot.length) {
+      for (let i = 0; i < reqSlot.length; i++) {
+        await slots.addSlot({
+          slot: reqSlot[i],
+          date: req.body.appointmentDate,
+        });
+      }
+    } else {
+      return res.status(500).send({ message: "Slot Not Available" });
+    }
+
     //add appointment
     let saveappointment = await appointment.save();
     if (saveappointment) res.send(saveappointment);
@@ -49,6 +54,10 @@ exports.create = async (req, res) => {
 
 exports.getAppointments = async (req, res) => {
   let params = {};
+  /**
+   * @params 
+   * dateFormat - yyyy-mm-dd
+   *    */
   if (req.query.fromDate) {
     params["appointmentDate"] = {};
     params.appointmentDate["$gte"] = req.query.fromDate
@@ -57,23 +66,23 @@ exports.getAppointments = async (req, res) => {
   }
   if (req.query.toDate) {
     params.appointmentDate["$lt"] = req.query.toDate
-      ? new Date(req.query.toDate)
+      ? new Date(new Date().setDate(new Date(req.query.toDate).getDate() + 1))
       : new Date();
   }
   try {
     var appointments = await Appointment.find(params);
-    if (appointments){
-        let data = appointments.map( (item) => {
-            return {
-                name:item.name,
-                appointmentDate: new Date(new Date(item.appointmentDate).getTime()),
-                email:item.email,
-                slot:item.slot,
-                duration: item.duration
-            }
-        })
-        res.send(data);
-    } 
+    if (appointments) {
+      let data = appointments.map((item) => {
+        return {
+          name: item.name,
+          appointmentDate: new Date(new Date(item.appointmentDate).getTime()),
+          email: item.email,
+          slot: item.slot,
+          duration: item.duration,
+        };
+      });
+      res.send(data);
+    }
   } catch (error) {
     return error;
   }

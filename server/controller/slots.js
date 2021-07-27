@@ -1,7 +1,6 @@
 var Slots = require("../modal/slots");
 
 const addSlot = (exports.addSlot = async (params) => {
-  console.log(params);
 
   const slot = new Slots({
     slot: params.slot,
