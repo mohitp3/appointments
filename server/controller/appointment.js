@@ -1,5 +1,11 @@
 var Appointment = require("../modal/appointment");
 const slots = require("./slots");
+const {isInArray}  = require("../utils/utils");
+
+Date.prototype.addHours = function (h) {
+  this.setTime(this.getTime() + h * 60 * 60 * 1000);
+  return this;
+};
 
 exports.create = async (req, res) => {
   // validate request
@@ -10,7 +16,7 @@ exports.create = async (req, res) => {
   var numSlots = Math.ceil(req.body.duration / 30);
   reqSlot = [];
   for (i = 0; i < numSlots; i++) {
-    reqSlot.push(req.body.slot + i);
+    reqSlot.push(new Date(req.body.slot).addHours(i / 2));
   }
   const appointment = new Appointment({
     email: req.body.email,
@@ -25,7 +31,7 @@ exports.create = async (req, res) => {
     //check slot
     let slotexist = await slots.getSlots(fetchParam);
     for (let i = 0; i < reqSlot.length; i++) {
-      if (!slotexist.includes(reqSlot[i])) {
+      if (!isInArray(slotexist, reqSlot[i])) {
         reqSlot = [];
         break;
       }
@@ -33,7 +39,7 @@ exports.create = async (req, res) => {
     //add slot
     if (reqSlot.length) {
       for (let i = 0; i < reqSlot.length; i++) {
-        await slots.addSlot({
+        let a = await slots.addSlot({
           slot: reqSlot[i],
           date: req.body.appointmentDate,
         });
@@ -41,7 +47,6 @@ exports.create = async (req, res) => {
     } else {
       return res.status(500).send({ message: "Slot Not Available" });
     }
-
     //add appointment
     let saveappointment = await appointment.save();
     if (saveappointment) res.send(saveappointment);
@@ -55,7 +60,7 @@ exports.create = async (req, res) => {
 exports.getAppointments = async (req, res) => {
   let params = {};
   /**
-   * @params 
+   * @params
    * dateFormat - yyyy-mm-dd
    *    */
   if (req.query.fromDate) {

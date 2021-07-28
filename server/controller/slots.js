@@ -1,10 +1,15 @@
 var Slots = require("../modal/slots");
 
-const addSlot = (exports.addSlot = async (params) => {
+Date.prototype.addHours = function (h) {
+  this.setTime(this.getTime() + h * 60 * 60 * 1000);
+  return this;
+};
 
+
+const addSlot = (exports.addSlot = async (params, start = 10) => {
   const slot = new Slots({
-    slot: params.slot,
-    date: params.date,
+    slot: new Date(params.slot),
+    date: new Date(params.date),
   });
   try {
     let saveSlot = await slot.save();
@@ -14,7 +19,11 @@ const addSlot = (exports.addSlot = async (params) => {
   }
 });
 
-const getSlots = (exports.getSlots = async (data) => {
+const getSlots = (exports.getSlots = async (
+  data,
+  startTime = 10,
+  appHours = 7
+) => {
   let params = {};
   if (data.date) {
     params["date"] = {};
@@ -25,13 +34,21 @@ const getSlots = (exports.getSlots = async (data) => {
       ? new Date(new Date(data.date).setDate(new Date(data.date).getDate() + 1))
       : new Date(new Date().setDate(new Date().getDate() + 1));
   }
-  var availableSlots = Array.from({ length: 14 }, (_, i) => i + 1);
+  let start = (new Date(data.date).setHours(startTime));
+  let slotavail = appHours * 2;
+  var availableSlots = [];
+  for (i = 0; i <= slotavail; i++) {
+    availableSlots.push(new Date(start).addHours(i / 2));
+  }
   try {
     var avSlots = await Slots.find(params);
     if (avSlots) {
       avSlots.forEach((item) => {
-        let ind = availableSlots.indexOf(item.slot);
-        availableSlots.splice(ind, 1);
+        availableSlots.forEach((slt, ind) => {
+          if (new Date(slt).getTime() === new Date(item.slot).getTime()) {
+            availableSlots.splice(ind, 1);
+          }
+        });
       });
       return availableSlots;
     }
@@ -46,7 +63,6 @@ exports.create = async (req, res) => {
     res.status(400).send({ message: "Content can not be emtpy!" });
     return;
   }
-
   try {
     let data = await addSlot(req.body);
     if (data) res.send(data);
