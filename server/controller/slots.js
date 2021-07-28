@@ -37,7 +37,7 @@ const getSlots = (exports.getSlots = async (
   let start = (new Date(data.date).setHours(startTime));
   let slotavail = appHours * 2;
   var availableSlots = [];
-  for (i = 0; i <= slotavail; i++) {
+  for (i = -1; i < slotavail; i++) {
     availableSlots.push(new Date(start).addHours(i / 2));
   }
   try {
